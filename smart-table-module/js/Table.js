@@ -26,26 +26,11 @@ angular.module('smartTable.table', ['smartTable.column', 'smartTable.utilities',
         scope.numberOfPagesError = false;
         scope.totalCountItems = "";
         
-        scope.numberOfPages = calculateNumberOfPages();
+        scope.numberOfPages = 1;
         scope.currentPage = 1;
 
         this.predicate = {};
         var lastColumnSort;
-
-        function calculateNumberOfPages() {
-        	http.get(scope.config.resourceBaseURL + "/total" )
-	    		.success(function(res){
-	    			scope.numberOfPages = Math.ceil(res / scope.config.itemsByPage);
-	    			scope.totalCountItems = res;
-	    		})
-	    		.error(function(data, status){
-	    			scope.numberOfPagesError = true;
-	    			scope.totalCountItems = -1;
-	    		});
-    	
-	        //should come from the server, here we simply put a random value
-	        return 1;
-        }
 
         function sortDataRow(array, column) {
             var sortAlgo = (scope.sortAlgorithm && angular.isFunction(scope.sortAlgorithm)) === true ? scope.sortAlgorithm : filter('orderBy');
@@ -141,7 +126,7 @@ angular.module('smartTable.table', ['smartTable.column', 'smartTable.utilities',
             for (var j = 0, l = scope.columns.length; j < l; j++) {
                 this.predicate[scope.columns[j].map] = scope.columns[j].filterPredicate;
             }
-            this.pipe(true);
+            this.pipe();
 
         };
 
@@ -150,9 +135,7 @@ angular.module('smartTable.table', ['smartTable.column', 'smartTable.utilities',
          * @param array
          * @returns Array, an array result of the operations on input array
          */
-        this.pipe = function (recountItems) {
-        	
-        	recountItems = typeof recountItems !== 'undefined' ? recountItems : false;
+        this.pipe = function () {
         	
             //use the scope and private data to build a request :
             // here the content of a post request, but can be an url, ... depends on the server API
@@ -165,9 +148,6 @@ angular.module('smartTable.table', ['smartTable.column', 'smartTable.utilities',
 
             log.log(JSON.stringify(postData));
 
-            if(recountItems == true)
-            	calculateNumberOfPages();
-
             scope.showSpinner = true;
             scope.showError = false;
             scope.displayedCollection = [];
@@ -175,7 +155,9 @@ angular.module('smartTable.table', ['smartTable.column', 'smartTable.utilities',
             http.post(scope.config.resourceBaseURL, postData)
             	.success(function (res) {
             		scope.showSpinner = false;
-            		scope.displayedCollection = res;
+            		scope.displayedCollection = res.items;
+            		scope.numberOfPages = Math.ceil(res.total / scope.config.itemsByPage);
+	    			scope.totalCountItems = res.total;
                 })
             	.error(function(data, status){
             		scope.showSpinner = false;
