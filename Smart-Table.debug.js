@@ -49,7 +49,7 @@ smartTableColumnModule.provider('Column', ColumnProvider);
 angular.module('smartTable.directives', ['smartTable.templateUrlList', 'smartTable.templates'])
     .directive('smartTable', ['templateUrlList', 'DefaultTableConfiguration', function (templateList, defaultConfig) {
         return {
-            restrict: 'E',
+            restrict: 'EA',
             scope: {
                 columnCollection: '=columns',
                 config: '='
@@ -184,7 +184,53 @@ angular.module('smartTable.directives', ['smartTable.templateUrlList', 'smartTab
                     ctrl.search(value);
                 });
             }
-        }
+        };
+    }])
+    //the global filter
+    .directive('smartTableFilterForm', ['templateUrlList', '$compile', function (templateList, compile) {
+    	return {
+    		restrict: 'C',
+    		require: '^smartTable',
+    		link: function (scope, element, attr, ctrl) {
+    				var filteringHTML = '';
+    				for (i in scope.columnCollection){
+    					var column = scope.columnCollection[i];
+    					if(column.isInFilterForm)
+    						filteringHTML += "<tr>" +
+    										 "	<td>" + 
+    										 	column.label +
+    										 "	</td>" +
+    										 " 	<td><input ng-model=\"" + column.map+"Filter" + "\" type=\"text\" /></td>" +
+    										 "</tr>";
+    				}
+    				if(filteringHTML.length > 0){
+    					
+    					element.html(filteringHTML);
+    					compile(element.contents())(scope);
+    				}
+    				
+    				scope.filterFormSubmit = function(){
+    		        	for (var j = 0, l = scope.columns.length; j < l; j++) {
+    		        		if(scope.columns[j].isInFilterForm){
+    		        			var filterModel = scope.columns[j].map+"Filter";
+    		        			if(scope[filterModel] != undefined)
+    		        				ctrl.predicate[scope.columns[j].map] = scope[filterModel];
+    		        		}
+    		            }
+    		        	ctrl.pipe(true);
+    		        };
+
+    		        scope.resetFormSubmit = function(){
+    		        	for(filterFieldname in ctrl.predicate){
+    		        		ctrl.predicate[filterFieldname] = "";
+    		        		filterModel = filterFieldname + "Filter";
+    		        		if(scope[filterModel] != undefined)
+    		        			scope[filterModel] = "";
+    		        	}
+    		        	ctrl.pipe(true);
+    		        };
+    		}
+    	};
     }])
     //a customisable cell (see templateUrl) and editable
     //TODO check with the ng-include strategy
@@ -322,6 +368,7 @@ angular.module('smartTable.table', ['smartTable.column', 'smartTable.utilities',
     .constant('DefaultTableConfiguration', {
         selectionMode: 'none',
         isGlobalSearchActivated: false,
+        isFilterFormActivated: false,
         displaySelectionCheckbox: false,
         isPaginationEnabled: true,
         itemsByPage: 10,
@@ -329,23 +376,37 @@ angular.module('smartTable.table', ['smartTable.column', 'smartTable.utilities',
 
         //just to remind available option
         sortAlgorithm: '',
-        filterAlgorithm: ''
+        filterAlgorithm: '',
     })
     .controller('TableCtrl', ['$scope', 'Column', '$filter', 'ArrayUtility', 'DefaultTableConfiguration', '$http', '$log', function (scope, Column, filter, arrayUtility, defaultConfig, http, log) {
 
         scope.columns = [];
 
         scope.displayedCollection = []; //init empty array so that if pagination is enabled, it does not spoil performances
+        scope.showSpinner = true;
+        scope.showError = false;
+        scope.numberOfPagesError = false;
+        scope.totalCountItems = "";
+        
         scope.numberOfPages = calculateNumberOfPages();
         scope.currentPage = 1;
 
-        var predicate = {},
-            lastColumnSort;
+        this.predicate = {};
+        var lastColumnSort;
 
         function calculateNumberOfPages() {
-
-            //should come from the server, here we simply put a random value
-            return 5;
+        	http.get(scope.config.resourceBaseURL + "/total" )
+	    		.success(function(res){
+	    			scope.numberOfPages = Math.ceil(res / scope.config.itemsByPage);
+	    			scope.totalCountItems = res;
+	    		})
+	    		.error(function(data, status){
+	    			scope.numberOfPagesError = true;
+	    			scope.totalCountItems = -1;
+	    		});
+    	
+	        //should come from the server, here we simply put a random value
+	        return 1;
         }
 
         function sortDataRow(array, column) {
@@ -430,19 +491,19 @@ angular.module('smartTable.table', ['smartTable.column', 'smartTable.utilities',
 
             //update column and global predicate
             if (column && scope.columns.indexOf(column) !== -1) {
-                predicate.$ = '';
+                this.predicate.$ = '';
                 column.filterPredicate = input;
             } else {
                 for (var j = 0, l = scope.columns.length; j < l; j++) {
                     scope.columns[j].filterPredicate = '';
                 }
-                predicate.$ = input;
+                this.predicate.$ = input;
             }
 
             for (var j = 0, l = scope.columns.length; j < l; j++) {
-                predicate[scope.columns[j].map] = scope.columns[j].filterPredicate;
+                this.predicate[scope.columns[j].map] = scope.columns[j].filterPredicate;
             }
-            this.pipe();
+            this.pipe(true);
 
         };
 
@@ -451,21 +512,39 @@ angular.module('smartTable.table', ['smartTable.column', 'smartTable.utilities',
          * @param array
          * @returns Array, an array result of the operations on input array
          */
-        this.pipe = function () {
+        this.pipe = function (recountItems) {
+        	
+        	recountItems = typeof recountItems !== 'undefined' ? recountItems : false;
+        	
             //use the scope and private data to build a request :
             // here the content of a post request, but can be an url, ... depends on the server API
             var postData = {
                 orderBy: lastColumnSort || null,
-                filter: predicate,
+                filter: this.predicate,
                 page: scope.currentPage || 1,
-                numberOfItems: scope.numberOfItems || 10
+                itemsByPage: scope.config.itemsByPage || 10,
             };
 
             log.log(JSON.stringify(postData));
 
-            http.post('dummyServlet/dont/care/about/url', postData).success(function (res) {
-                    scope.displayedCollection = res;
-                });
+            if(recountItems == true)
+            	calculateNumberOfPages();
+
+            scope.showSpinner = true;
+            scope.showError = false;
+            scope.displayedCollection = [];
+            
+            http.post(scope.config.resourceBaseURL, postData)
+            	.success(function (res) {
+            		scope.showSpinner = false;
+            		scope.displayedCollection = res;
+                })
+            	.error(function(data, status){
+            		scope.showSpinner = false;
+            		scope.showError = true;
+            		scope.smartTableErrorMsg = "Server Connection Error [code: " + status + "]";
+            		log.log("[SmartTable Error] status: " + status + " data: " + data);
+            	});
         };
 
         /*////////////
@@ -585,8 +664,11 @@ angular.module("partials/pagination.html", []).run(["$templateCache", function($
   $templateCache.put("partials/pagination.html",
     "<div class=\"pagination\">\n" +
     "    <ul>\n" +
-    "        <li ng-repeat=\"page in pages\" ng-class=\"{active: page.active, disabled: page.disabled}\"><a\n" +
-    "                ng-click=\"selectPage(page.number)\">{{page.text}}</a></li>\n" +
+    "         <li ng-repeat=\"page in pages\" ng-class=\"{active: page.active, disabled: page.disabled}\">\n" +
+    "    		<a ng-click=\"selectPage(page.number)\">\n" +
+    "    			<div ng-bind-html-unsafe=\"page.text\"></div>\n" +
+    "    		</a>\n" +
+    "    	</li>\n" +
     "    </ul>\n" +
     "</div> ");
 }]);
@@ -606,28 +688,63 @@ angular.module("partials/smartTable.html", []).run(["$templateCache", function($
     "<div class=\"smart-table-container\">\n" +
     "    <table class=\"smart-table\">\n" +
     "        <thead>\n" +
-    "        <tr class=\"smart-table-global-search-row\" ng-show=\"isGlobalSearchActivated\">\n" +
-    "            <td class=\"smart-table-global-search\" column-span=\"{{columns.length}}\" colspan=\"{{columnSpan}}\">\n" +
-    "            </td>\n" +
-    "        </tr>\n" +
-    "        <tr class=\"smart-table-header-row\">\n" +
-    "            <th ng-repeat=\"column in columns\" ng-include=\"column.headerTemplateUrl\"\n" +
-    "                class=\"smart-table-header-cell {{column.headerClass}}\" scope=\"col\">\n" +
-    "            </th>\n" +
-    "        </tr>\n" +
+    "        	<tr class=\"smart-table-global-search-row\" ng-show=\"isGlobalSearchActivated || isFilterFormActivated\">\n" +
+    "    			<td colspan=\"{{columns.length}}\">	\n" +
+    "	    			 <table id=\"smartTableSearchTable\">\n" +
+    "	    				<tr ng-show=\"isGlobalSearchActivated\">		\n" +
+    "	    		            <td class=\"smart-table-global-search\" column-span=\"{{columns.length}}\" colspan=\"{{columnSpan}}\">\n" +
+    "	    		            </td>\n" +
+    "	    				</tr>\n" +
+    "	    				<tr ng-show=\"isFilterFormActivated\">		\n" +
+    "	     		            <td colspan=\"{{columns.length}}\">\n" +
+    "	    					   <div class=\"smart-table-filter-form\">\n" +
+    "	    					   		<table>\n" +
+    "	    							</table>\n" +
+    "	    					   </div>\n" +
+    "	    					   <div id=\"smartTableFilterBtns\">			\n" +
+    "	    						   <button class=\"btn btn-xs btn-default\" ng-click=\"filterFormSubmit()\">Filter</button>	\n" +
+    "	    						   <button class=\"btn btn-xs btn-default\" ng-click=\"resetFormSubmit()\">Reset</button>	\n" +
+    "	    					   </div>			\n" +
+    "	    	           		</td>\n" +
+    "	    				</tr>\n" +
+    "	    			 </table>\n" +
+    "    			</td>\n" +
+    "            </tr>\n" +
+    "	        <tr class=\"smart-table-header-row\">\n" +
+    "	            <th ng-repeat=\"column in columns\" ng-include=\"column.headerTemplateUrl\"\n" +
+    "	                class=\"smart-table-header-cell {{column.headerClass}}\" scope=\"col\">\n" +
+    "	            </th>\n" +
+    "	        </tr>\n" +
     "        </thead>\n" +
     "        <tbody>\n" +
-    "        <tr ng-repeat=\"dataRow in displayedCollection\" ng-class=\"{selected:dataRow.isSelected}\"\n" +
-    "            class=\"smart-table-data-row\">\n" +
-    "            <td ng-repeat=\"column in columns\" class=\"smart-table-data-cell {{column.cellClass}}\"></td>\n" +
-    "        </tr>\n" +
+    "	        <tr ng-repeat=\"dataRow in displayedCollection\" ng-class=\"{selected:dataRow.isSelected}\"\n" +
+    "	            class=\"smart-table-data-row\">\n" +
+    "	            <td ng-repeat=\"column in columns\" class=\"smart-table-data-cell {{column.cellClass}}\"></td>\n" +
+    "	        </tr>\n" +
+    " 	 		<tr ng-show=\"showSpinner\">\n" +
+    "    			<td id=\"smartTableSpinnerRow\" colspan=\"{{columns.length}}\" align=\"center\">\n" +
+    "    				<div class=\"smartTableSpinner\">			\n" +
+    "    					<img src=\"data:image/gif;base64,R0lGODlhKwALAPEAAP///4qLkMXFyIqLkCH/C05FVFNDQVBFMi4wAwEAAAAh/hpDcmVhdGVkIHdpdGggYWpheGxvYWQuaW5mbwAh+QQJCgAAACwAAAAAKwALAAACMoSOCMuW2diD88UKG95W88uF4DaGWFmhZid93pq+pwxnLUnXh8ou+sSz+T64oCAyTBUAACH5BAkKAAAALAAAAAArAAsAAAI9xI4IyyAPYWOxmoTHrHzzmGHe94xkmJifyqFKQ0pwLLgHa82xrekkDrIBZRQab1jyfY7KTtPimixiUsevAAAh+QQJCgAAACwAAAAAKwALAAACPYSOCMswD2FjqZpqW9xv4g8KE7d54XmMpNSgqLoOpgvC60xjNonnyc7p+VKamKw1zDCMR8rp8pksYlKorgAAIfkECQoAAAAsAAAAACsACwAAAkCEjgjLltnYmJS6Bxt+sfq5ZUyoNJ9HHlEqdCfFrqn7DrE2m7Wdj/2y45FkQ13t5itKdshFExC8YCLOEBX6AhQAADsAAAAAAAAAAAA=\" />\n" +
+    "    				</div>				\n" +
+    "    			</td>\n" +
+    "    		 </tr>\n" +
+    "    		 <tr ng-show=\"showError\">\n" +
+    "    			<td id=\"smartTableErrorRow\" colspan=\"{{columns.length}}\" align=\"center\">\n" +
+    "    				<div class=\"smartTableErrorBox\">			\n" +
+    "    					<img class=\"smartTableErrorImg\" src=\"data:image/png;base64,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\" />\n" +
+    "    					<span class=\"smartTableErrorTxt\">{{smartTableErrorMsg}}</span>				\n" +
+    "    				</div>				\n" +
+    "    			</td>\n" +
+    "    		 </tr>\n" +
     "        </tbody>\n" +
     "        <tfoot ng-show=\"isPaginationEnabled\">\n" +
-    "        <tr class=\"smart-table-footer-row\">\n" +
-    "            <td colspan=\"{{columns.length}}\">\n" +
-    "                <pagination num-pages=\"numberOfPages\" max-size=\"maxSize\" current-page=\"currentPage\"></pagination>\n" +
-    "            </td>\n" +
-    "        </tr>\n" +
+    "         	<tr class=\"smart-table-footer-row\">\n" +
+    "               	 <td colspan=\"{{columns.length}}\">\n" +
+    "                   	<pagination num-pages=\"numberOfPages\" max-size=\"maxSize\" current-page=\"currentPage\" errored=\"numberOfPagesError\" ></pagination>\n" +
+    "                   		<div ng-show=\"displayedCollection.length != 0 && totalCountItems != -1\" class=\"paginationCounter\"><span>Showing {{((currentPage-1) * itemsByPage) + 1}} - {{((currentPage-1) * itemsByPage) + displayedCollection.length}} of {{totalCountItems}} total</span></div>				\n" +
+    "                   		<div ng-show=\"totalCountItems == -1\" class=\"paginationCounter paginationCounterError\"><span>Connection Error in total item counting</span></div>				\n" +
+    "    	             </td>\n" +
+    "           	</tr>\n" +
     "        </tfoot>\n" +
     "    </table>\n" +
     "</div>\n" +
@@ -768,8 +885,8 @@ angular.module('ui.bootstrap.pagination', ['smartTable.templateUrlList'])
         boundaryLinks: false,
         directionLinks: true,
         firstText: 'First',
-        previousText: '❰',
-        nextText: '❱',
+        previousText: '&lt;',
+        nextText: '&gt;',
         lastText: 'Last'
     })
 
@@ -780,7 +897,8 @@ angular.module('ui.bootstrap.pagination', ['smartTable.templateUrlList'])
             scope: {
                 numPages: '=',
                 currentPage: '=',
-                maxSize: '='
+                maxSize: '=',
+                numberOfPagesError : '=errored'
             },
             templateUrl: templateUrlList.pagination,
             replace: true,
@@ -804,7 +922,7 @@ angular.module('ui.bootstrap.pagination', ['smartTable.templateUrlList'])
                     };
                 }
 
-                scope.$watch('numPages + currentPage + maxSize', function () {
+                scope.$watch('numPages + currentPage + maxSize + numberOfPagesError', function () {
                     scope.pages = [];
 
                     // Default page limits
@@ -820,6 +938,19 @@ angular.module('ui.bootstrap.pagination', ['smartTable.templateUrlList'])
                             endPage = scope.numPages;
                             startPage = endPage - scope.maxSize + 1;
                         }
+                    }
+                    
+                    if(scope.numberOfPagesError){
+                    	var previousPage = makePage(0, previousText, false, false);
+                        scope.pages.unshift(previousPage);
+                    	
+                    	var	page = makePage("Error", "<img height=\"16\" src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABkAAAAZCAYAAADE6YVjAAAACXBIWXMAAAsTAAALEwEAmpwYAAAABGdBTUEAALGOfPtRkwAAACBjSFJNAAB6JQAAgIMAAPn/AACA6QAAdTAAAOpgAAA6mAAAF2+SX8VGAAACSklEQVR42mL8//8/A60BQAAxMdABAAQQC5zFyIhNXheIpwKxEhD/wSIP0vQLiPuBeBqGLDSUAAKIARRcYAwSQ8UKQHzpP0QpIfwPiGMxzICaDRBAjPA4QfWJChCvBGIjIL4AxI1A/BtHcMcBcQgQ/wRiPyDehe4TgADC5hNlIH4IdeFxIJbD4ktkzAzETVD134A4Dt0nAAGEbokSEJ+HajgDxLJoBvoDcTsQ1wCxKJI4IxB3QPX9AOIYZEsAAgjZEjWkOMDlg2VI8aCNxUdLkCyKgpkNEEDIlhyCKjiNxQcwPBeq5jsQa2CR5wDiydCEcA9mNkAAIVvyDGqAD57wJ2QJDF8D4g8wswECCDkz/oLS/6iQ9/5CMRgABBATDUoBRiiGA4AAokuxAhBATGSqZyZFE0AAsWARw1csg3L1dyiNC2DoBwggJrSwZECOMCygGlpo6gHxPRxq/qCZxwAQQNgsSUKPOCQgCMRVQGyDoywDgRggVkb2EUAAIeeTZCD+Cc0HTdCiggGt6NiClOMNseSPcGgeAsnPgJkNEEDoZReocPsKVQQqo1jQDJkFlXsJLYaQ5VyhBSRIfjkQ88DMBgggbKWwGxD/hipeAi0qkIsNV2hdg6wnDIi/QPV0wB0HNRsggHBVWjFIQQcqi9iBmBWImZDUgPhsULUw33dCC0qUoh4ggHBVWiAQDcTzgJgNiK/hSdraUBpUyUWhFEtQswECCF/1C8KRQHwDiN8D8Vsc+DkQzwRiblzVL0AAMdKjSQQQQHQpuwACDABJg/CaxuUWmgAAAABJRU5ErkJggg==\"/>", false, false);
+                    	scope.pages.push(page);
+                        
+                        var nextPage = makePage(0, nextText, false, false);
+                        scope.pages.push(nextPage);
+                        
+                        return
                     }
 
                     // Add page number links

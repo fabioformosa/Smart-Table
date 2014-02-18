@@ -6,6 +6,7 @@ angular.module('smartTable.table', ['smartTable.column', 'smartTable.utilities',
     .constant('DefaultTableConfiguration', {
         selectionMode: 'none',
         isGlobalSearchActivated: false,
+        isFilterFormActivated: false,
         displaySelectionCheckbox: false,
         isPaginationEnabled: true,
         itemsByPage: 10,
@@ -13,23 +14,37 @@ angular.module('smartTable.table', ['smartTable.column', 'smartTable.utilities',
 
         //just to remind available option
         sortAlgorithm: '',
-        filterAlgorithm: ''
+        filterAlgorithm: '',
     })
     .controller('TableCtrl', ['$scope', 'Column', '$filter', 'ArrayUtility', 'DefaultTableConfiguration', '$http', '$log', function (scope, Column, filter, arrayUtility, defaultConfig, http, log) {
 
         scope.columns = [];
 
         scope.displayedCollection = []; //init empty array so that if pagination is enabled, it does not spoil performances
+        scope.showSpinner = true;
+        scope.showError = false;
+        scope.numberOfPagesError = false;
+        scope.totalCountItems = "";
+        
         scope.numberOfPages = calculateNumberOfPages();
         scope.currentPage = 1;
 
-        var predicate = {},
-            lastColumnSort;
+        this.predicate = {};
+        var lastColumnSort;
 
         function calculateNumberOfPages() {
-
-            //should come from the server, here we simply put a random value
-            return 5;
+        	http.get(scope.config.resourceBaseURL + "/total" )
+	    		.success(function(res){
+	    			scope.numberOfPages = Math.ceil(res / scope.config.itemsByPage);
+	    			scope.totalCountItems = res;
+	    		})
+	    		.error(function(data, status){
+	    			scope.numberOfPagesError = true;
+	    			scope.totalCountItems = -1;
+	    		});
+    	
+	        //should come from the server, here we simply put a random value
+	        return 1;
         }
 
         function sortDataRow(array, column) {
@@ -114,19 +129,19 @@ angular.module('smartTable.table', ['smartTable.column', 'smartTable.utilities',
 
             //update column and global predicate
             if (column && scope.columns.indexOf(column) !== -1) {
-                predicate.$ = '';
+                this.predicate.$ = '';
                 column.filterPredicate = input;
             } else {
                 for (var j = 0, l = scope.columns.length; j < l; j++) {
                     scope.columns[j].filterPredicate = '';
                 }
-                predicate.$ = input;
+                this.predicate.$ = input;
             }
 
             for (var j = 0, l = scope.columns.length; j < l; j++) {
-                predicate[scope.columns[j].map] = scope.columns[j].filterPredicate;
+                this.predicate[scope.columns[j].map] = scope.columns[j].filterPredicate;
             }
-            this.pipe();
+            this.pipe(true);
 
         };
 
@@ -135,21 +150,39 @@ angular.module('smartTable.table', ['smartTable.column', 'smartTable.utilities',
          * @param array
          * @returns Array, an array result of the operations on input array
          */
-        this.pipe = function () {
+        this.pipe = function (recountItems) {
+        	
+        	recountItems = typeof recountItems !== 'undefined' ? recountItems : false;
+        	
             //use the scope and private data to build a request :
             // here the content of a post request, but can be an url, ... depends on the server API
             var postData = {
                 orderBy: lastColumnSort || null,
-                filter: predicate,
+                filter: this.predicate,
                 page: scope.currentPage || 1,
-                numberOfItems: scope.numberOfItems || 10
+                itemsByPage: scope.config.itemsByPage || 10,
             };
 
             log.log(JSON.stringify(postData));
 
-            http.post('dummyServlet/dont/care/about/url', postData).success(function (res) {
-                    scope.displayedCollection = res;
-                });
+            if(recountItems == true)
+            	calculateNumberOfPages();
+
+            scope.showSpinner = true;
+            scope.showError = false;
+            scope.displayedCollection = [];
+            
+            http.post(scope.config.resourceBaseURL, postData)
+            	.success(function (res) {
+            		scope.showSpinner = false;
+            		scope.displayedCollection = res;
+                })
+            	.error(function(data, status){
+            		scope.showSpinner = false;
+            		scope.showError = true;
+            		scope.smartTableErrorMsg = "Server Connection Error [code: " + status + "]";
+            		log.log("[SmartTable Error] status: " + status + " data: " + data);
+            	});
         };
 
         /*////////////

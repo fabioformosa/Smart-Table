@@ -4,8 +4,8 @@ angular.module('ui.bootstrap.pagination', ['smartTable.templateUrlList'])
         boundaryLinks: false,
         directionLinks: true,
         firstText: 'First',
-        previousText: '❰',
-        nextText: '❱',
+        previousText: '&lt;',
+        nextText: '&gt;',
         lastText: 'Last'
     })
 
@@ -16,7 +16,8 @@ angular.module('ui.bootstrap.pagination', ['smartTable.templateUrlList'])
             scope: {
                 numPages: '=',
                 currentPage: '=',
-                maxSize: '='
+                maxSize: '=',
+                numberOfPagesError : '=errored'
             },
             templateUrl: templateUrlList.pagination,
             replace: true,
@@ -40,7 +41,7 @@ angular.module('ui.bootstrap.pagination', ['smartTable.templateUrlList'])
                     };
                 }
 
-                scope.$watch('numPages + currentPage + maxSize', function () {
+                scope.$watch('numPages + currentPage + maxSize + numberOfPagesError', function () {
                     scope.pages = [];
 
                     // Default page limits
@@ -56,6 +57,19 @@ angular.module('ui.bootstrap.pagination', ['smartTable.templateUrlList'])
                             endPage = scope.numPages;
                             startPage = endPage - scope.maxSize + 1;
                         }
+                    }
+                    
+                    if(scope.numberOfPagesError){
+                    	var previousPage = makePage(0, previousText, false, false);
+                        scope.pages.unshift(previousPage);
+                    	
+                    	var	page = makePage("Error", "<img height=\"16\" src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABkAAAAZCAYAAADE6YVjAAAACXBIWXMAAAsTAAALEwEAmpwYAAAABGdBTUEAALGOfPtRkwAAACBjSFJNAAB6JQAAgIMAAPn/AACA6QAAdTAAAOpgAAA6mAAAF2+SX8VGAAACSklEQVR42mL8//8/A60BQAAxMdABAAQQC5zFyIhNXheIpwKxEhD/wSIP0vQLiPuBeBqGLDSUAAKIARRcYAwSQ8UKQHzpP0QpIfwPiGMxzICaDRBAjPA4QfWJChCvBGIjIL4AxI1A/BtHcMcBcQgQ/wRiPyDehe4TgADC5hNlIH4IdeFxIJbD4ktkzAzETVD134A4Dt0nAAGEbokSEJ+HajgDxLJoBvoDcTsQ1wCxKJI4IxB3QPX9AOIYZEsAAgjZEjWkOMDlg2VI8aCNxUdLkCyKgpkNEEDIlhyCKjiNxQcwPBeq5jsQa2CR5wDiydCEcA9mNkAAIVvyDGqAD57wJ2QJDF8D4g8wswECCDkz/oLS/6iQ9/5CMRgABBATDUoBRiiGA4AAokuxAhBATGSqZyZFE0AAsWARw1csg3L1dyiNC2DoBwggJrSwZECOMCygGlpo6gHxPRxq/qCZxwAQQNgsSUKPOCQgCMRVQGyDoywDgRggVkb2EUAAIeeTZCD+Cc0HTdCiggGt6NiClOMNseSPcGgeAsnPgJkNEEDoZReocPsKVQQqo1jQDJkFlXsJLYaQ5VyhBSRIfjkQ88DMBgggbKWwGxD/hipeAi0qkIsNV2hdg6wnDIi/QPV0wB0HNRsggHBVWjFIQQcqi9iBmBWImZDUgPhsULUw33dCC0qUoh4ggHBVWiAQDcTzgJgNiK/hSdraUBpUyUWhFEtQswECCF/1C8KRQHwDiN8D8Vsc+DkQzwRiblzVL0AAMdKjSQQQQHQpuwACDABJg/CaxuUWmgAAAABJRU5ErkJggg==\"/>", false, false);
+                    	scope.pages.push(page);
+                        
+                        var nextPage = makePage(0, nextText, false, false);
+                        scope.pages.push(nextPage);
+                        
+                        return
                     }
 
                     // Add page number links

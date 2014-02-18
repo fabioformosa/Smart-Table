@@ -2,7 +2,7 @@
 angular.module('smartTable.directives', ['smartTable.templateUrlList', 'smartTable.templates'])
     .directive('smartTable', ['templateUrlList', 'DefaultTableConfiguration', function (templateList, defaultConfig) {
         return {
-            restrict: 'E',
+            restrict: 'EA',
             scope: {
                 columnCollection: '=columns',
                 config: '='
@@ -137,7 +137,53 @@ angular.module('smartTable.directives', ['smartTable.templateUrlList', 'smartTab
                     ctrl.search(value);
                 });
             }
-        }
+        };
+    }])
+    //the global filter
+    .directive('smartTableFilterForm', ['templateUrlList', '$compile', function (templateList, compile) {
+    	return {
+    		restrict: 'C',
+    		require: '^smartTable',
+    		link: function (scope, element, attr, ctrl) {
+    				var filteringHTML = '';
+    				for (i in scope.columnCollection){
+    					var column = scope.columnCollection[i];
+    					if(column.isInFilterForm)
+    						filteringHTML += "<tr>" +
+    										 "	<td>" + 
+    										 	column.label +
+    										 "	</td>" +
+    										 " 	<td><input ng-model=\"" + column.map+"Filter" + "\" type=\"text\" /></td>" +
+    										 "</tr>";
+    				}
+    				if(filteringHTML.length > 0){
+    					
+    					element.html(filteringHTML);
+    					compile(element.contents())(scope);
+    				}
+    				
+    				scope.filterFormSubmit = function(){
+    		        	for (var j = 0, l = scope.columns.length; j < l; j++) {
+    		        		if(scope.columns[j].isInFilterForm){
+    		        			var filterModel = scope.columns[j].map+"Filter";
+    		        			if(scope[filterModel] != undefined)
+    		        				ctrl.predicate[scope.columns[j].map] = scope[filterModel];
+    		        		}
+    		            }
+    		        	ctrl.pipe(true);
+    		        };
+
+    		        scope.resetFormSubmit = function(){
+    		        	for(filterFieldname in ctrl.predicate){
+    		        		ctrl.predicate[filterFieldname] = "";
+    		        		filterModel = filterFieldname + "Filter";
+    		        		if(scope[filterModel] != undefined)
+    		        			scope[filterModel] = "";
+    		        	}
+    		        	ctrl.pipe(true);
+    		        };
+    		}
+    	};
     }])
     //a customisable cell (see templateUrl) and editable
     //TODO check with the ng-include strategy
