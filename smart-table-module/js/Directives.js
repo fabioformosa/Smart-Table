@@ -170,7 +170,7 @@ angular.module('smartTable.directives', ['smartTable.templateUrlList', 'smartTab
     		        				ctrl.predicate[scope.columns[j].map] = scope[filterModel];
     		        		}
     		            }
-    		        	ctrl.pipe(true);
+    		        	ctrl.pipe();
     		        };
 
     		        scope.resetFormSubmit = function(){
@@ -180,7 +180,7 @@ angular.module('smartTable.directives', ['smartTable.templateUrlList', 'smartTab
     		        		if(scope[filterModel] != undefined)
     		        			scope[filterModel] = "";
     		        	}
-    		        	ctrl.pipe(true);
+    		        	ctrl.pipe();
     		        };
     		}
     	};
