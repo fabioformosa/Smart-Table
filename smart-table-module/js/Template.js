@@ -1,4 +1,4 @@
-angular.module('smartTable.templates', ['partials/defaultCell.html', 'partials/defaultHeader.html', 'partials/editableCell.html', 'partials/globalSearchCell.html', 'partials/pagination.html', 'partials/selectAllCheckbox.html', 'partials/selectionCheckbox.html', 'partials/smartTable.html']);
+angular.module('smartTable.templates', ['partials/defaultCell.html', 'partials/defaultHeader.html', 'partials/editableCell.html', 'partials/filterSearchBox.html', 'partials/globalSearchCell.html', 'partials/pagination.html', 'partials/selectAllCheckbox.html', 'partials/selectionCheckbox.html', 'partials/smartTable.html']);
 
 angular.module("partials/defaultCell.html", []).run(["$templateCache", function($templateCache) {
   $templateCache.put("partials/defaultCell.html",
@@ -19,6 +19,15 @@ angular.module("partials/editableCell.html", []).run(["$templateCache", function
     "        <input name=\"myInput\" ng-model=\"value\" type=\"type\" input-type/>\n" +
     "    </form>\n" +
     "</div>");
+}]);
+
+angular.module("partials/filterSearchBox.html", []).run(["$templateCache", function($templateCache) {
+  $templateCache.put("partials/filterSearchBox.html",
+    "<tr ng-repeat=\"column in columns | filter:isInFilterForm:true\">\n" +
+    "	<td>{{column.label}}</td>\n" +
+    "	<td><input ng-model=\"filterInput[column.map]\" type=\"text\"></td>\n" +
+    "</tr>\n" +
+    "");
 }]);
 
 angular.module("partials/globalSearchCell.html", []).run(["$templateCache", function($templateCache) {
@@ -64,10 +73,8 @@ angular.module("partials/smartTable.html", []).run(["$templateCache", function($
     "	    				</tr>\n" +
     "	    				<tr ng-show=\"isFilterFormActivated\">		\n" +
     "	     		            <td colspan=\"{{columns.length}}\">\n" +
-    "	    					   <div class=\"smart-table-filter-form\">\n" +
-    "	    					   		<table>\n" +
-    "	    							</table>\n" +
-    "	    					   </div>\n" +
+    "    					   		<table class=\"smart-table-filter-form\">\n" +
+    "    							</table>\n" +
     "	    					   <div id=\"smartTableFilterBtns\">			\n" +
     "	    						   <button class=\"btn btn-xs btn-default\" ng-click=\"filterFormSubmit()\">Filter</button>	\n" +
     "	    						   <button class=\"btn btn-xs btn-default\" ng-click=\"resetFormSubmit()\">Reset</button>	\n" +

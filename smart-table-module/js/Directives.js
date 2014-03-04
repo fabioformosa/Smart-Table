@@ -144,41 +144,40 @@ angular.module('smartTable.directives', ['smartTable.templateUrlList', 'smartTab
     	return {
     		restrict: 'C',
     		require: '^smartTable',
+    		templateUrl: templateList.smartTableFilterSearchBox,
+            replace: false,
     		link: function (scope, element, attr, ctrl) {
-    				var filteringHTML = '';
-    				for (i in scope.columnCollection){
-    					var column = scope.columnCollection[i];
-    					if(column.isInFilterForm)
-    						filteringHTML += "<tr>" +
-    										 "	<td>" + 
-    										 	column.label +
-    										 "	</td>" +
-    										 " 	<td><input ng-model=\"" + column.map+"Filter" + "\" type=\"text\" /></td>" +
-    										 "</tr>";
-    				}
-    				if(filteringHTML.length > 0){
-    					
-    					element.html(filteringHTML);
-    					compile(element.contents())(scope);
-    				}
+//    				var filteringHTML = '';
+//    				for (i in scope.columnCollection){
+//    					var column = scope.columnCollection[i];
+//    					if(column.isInFilterForm)
+//    						filteringHTML += "<tr>" +
+//    										 "	<td>" + 
+//    										 	column.label +
+//    										 "	</td>" +
+//    										 " 	<td><input ng-model=\"" + column.map+"Filter" + "\" type=\"text\" /></td>" +
+//    										 "</tr>";
+//    				}
+//    				if(filteringHTML.length > 0){
+//    					
+//    					element.html(filteringHTML);
+//    					compile(element.contents())(scope);
+//    				}
     				
     				scope.filterFormSubmit = function(){
-    		        	for (var j = 0, l = scope.columns.length; j < l; j++) {
-    		        		if(scope.columns[j].isInFilterForm){
-    		        			var filterModel = scope.columns[j].map+"Filter";
-    		        			if(scope[filterModel] != undefined)
-    		        				ctrl.predicate[scope.columns[j].map] = scope[filterModel];
-    		        		}
-    		            }
+    					for(field in scope.filterInput){
+    		        		if(scope.filterInput[field] != undefined)
+    		        			ctrl.predicate[field] = scope.filterInput[field]; 
+    		        	} 
+    		        	
     		        	ctrl.pipe();
     		        };
 
     		        scope.resetFormSubmit = function(){
     		        	for(filterFieldname in ctrl.predicate){
     		        		ctrl.predicate[filterFieldname] = "";
-    		        		filterModel = filterFieldname + "Filter";
-    		        		if(scope[filterModel] != undefined)
-    		        			scope[filterModel] = "";
+    		        		if(scope.filterInput[filterFieldname] != undefined)
+    		        			scope.filterInput[filterFieldname] = "";
     		        	}
     		        	ctrl.pipe();
     		        };

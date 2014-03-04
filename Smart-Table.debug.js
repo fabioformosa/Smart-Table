@@ -191,43 +191,42 @@ angular.module('smartTable.directives', ['smartTable.templateUrlList', 'smartTab
     	return {
     		restrict: 'C',
     		require: '^smartTable',
+    		templateUrl: templateList.smartTableFilterSearchBox,
+            replace: false,
     		link: function (scope, element, attr, ctrl) {
-    				var filteringHTML = '';
-    				for (i in scope.columnCollection){
-    					var column = scope.columnCollection[i];
-    					if(column.isInFilterForm)
-    						filteringHTML += "<tr>" +
-    										 "	<td>" + 
-    										 	column.label +
-    										 "	</td>" +
-    										 " 	<td><input ng-model=\"" + column.map+"Filter" + "\" type=\"text\" /></td>" +
-    										 "</tr>";
-    				}
-    				if(filteringHTML.length > 0){
-    					
-    					element.html(filteringHTML);
-    					compile(element.contents())(scope);
-    				}
+//    				var filteringHTML = '';
+//    				for (i in scope.columnCollection){
+//    					var column = scope.columnCollection[i];
+//    					if(column.isInFilterForm)
+//    						filteringHTML += "<tr>" +
+//    										 "	<td>" + 
+//    										 	column.label +
+//    										 "	</td>" +
+//    										 " 	<td><input ng-model=\"" + column.map+"Filter" + "\" type=\"text\" /></td>" +
+//    										 "</tr>";
+//    				}
+//    				if(filteringHTML.length > 0){
+//    					
+//    					element.html(filteringHTML);
+//    					compile(element.contents())(scope);
+//    				}
     				
     				scope.filterFormSubmit = function(){
-    		        	for (var j = 0, l = scope.columns.length; j < l; j++) {
-    		        		if(scope.columns[j].isInFilterForm){
-    		        			var filterModel = scope.columns[j].map+"Filter";
-    		        			if(scope[filterModel] != undefined)
-    		        				ctrl.predicate[scope.columns[j].map] = scope[filterModel];
-    		        		}
-    		            }
-    		        	ctrl.pipe(true);
+    					for(field in scope.filterInput){
+    		        		if(scope.filterInput[field] != undefined)
+    		        			ctrl.predicate[field] = scope.filterInput[field]; 
+    		        	} 
+    		        	
+    		        	ctrl.pipe();
     		        };
 
     		        scope.resetFormSubmit = function(){
     		        	for(filterFieldname in ctrl.predicate){
     		        		ctrl.predicate[filterFieldname] = "";
-    		        		filterModel = filterFieldname + "Filter";
-    		        		if(scope[filterModel] != undefined)
-    		        			scope[filterModel] = "";
+    		        		if(scope.filterInput[filterFieldname] != undefined)
+    		        			scope.filterInput[filterFieldname] = "";
     		        	}
-    		        	ctrl.pipe(true);
+    		        	ctrl.pipe();
     		        };
     		}
     	};
@@ -393,6 +392,8 @@ angular.module('smartTable.table', ['smartTable.column', 'smartTable.utilities',
 
         this.predicate = {};
         var lastColumnSort;
+        
+        scope.filterInput = [];
 
         function sortDataRow(array, column) {
             var sortAlgo = (scope.sortAlgorithm && angular.isFunction(scope.sortAlgorithm)) === true ? scope.sortAlgorithm : filter('orderBy');
@@ -613,7 +614,7 @@ angular.module('smartTable.table', ['smartTable.column', 'smartTable.utilities',
     }]);
 
 
-angular.module('smartTable.templates', ['partials/defaultCell.html', 'partials/defaultHeader.html', 'partials/editableCell.html', 'partials/globalSearchCell.html', 'partials/pagination.html', 'partials/selectAllCheckbox.html', 'partials/selectionCheckbox.html', 'partials/smartTable.html']);
+angular.module('smartTable.templates', ['partials/defaultCell.html', 'partials/defaultHeader.html', 'partials/editableCell.html', 'partials/filterSearchBox.html', 'partials/globalSearchCell.html', 'partials/pagination.html', 'partials/selectAllCheckbox.html', 'partials/selectionCheckbox.html', 'partials/smartTable.html']);
 
 angular.module("partials/defaultCell.html", []).run(["$templateCache", function($templateCache) {
   $templateCache.put("partials/defaultCell.html",
@@ -634,6 +635,15 @@ angular.module("partials/editableCell.html", []).run(["$templateCache", function
     "        <input name=\"myInput\" ng-model=\"value\" type=\"type\" input-type/>\n" +
     "    </form>\n" +
     "</div>");
+}]);
+
+angular.module("partials/filterSearchBox.html", []).run(["$templateCache", function($templateCache) {
+  $templateCache.put("partials/filterSearchBox.html",
+    "<tr ng-repeat=\"column in columns | filter:isInFilterForm:true\">\n" +
+    "	<td>{{column.label}}</td>\n" +
+    "	<td><input ng-model=\"filterInput[column.map]\" type=\"text\"></td>\n" +
+    "</tr>\n" +
+    "");
 }]);
 
 angular.module("partials/globalSearchCell.html", []).run(["$templateCache", function($templateCache) {
@@ -679,10 +689,8 @@ angular.module("partials/smartTable.html", []).run(["$templateCache", function($
     "	    				</tr>\n" +
     "	    				<tr ng-show=\"isFilterFormActivated\">		\n" +
     "	     		            <td colspan=\"{{columns.length}}\">\n" +
-    "	    					   <div class=\"smart-table-filter-form\">\n" +
-    "	    					   		<table>\n" +
-    "	    							</table>\n" +
-    "	    					   </div>\n" +
+    "    					   		<table class=\"smart-table-filter-form\">\n" +
+    "    							</table>\n" +
     "	    					   <div id=\"smartTableFilterBtns\">			\n" +
     "	    						   <button class=\"btn btn-xs btn-default\" ng-click=\"filterFormSubmit()\">Filter</button>	\n" +
     "	    						   <button class=\"btn btn-xs btn-default\" ng-click=\"resetFormSubmit()\">Reset</button>	\n" +
@@ -737,6 +745,7 @@ angular.module('smartTable.templateUrlList', [])
     .constant('templateUrlList', {
         smartTable: 'partials/smartTable.html',
         smartTableGlobalSearch: 'partials/globalSearchCell.html',
+        smartTableFilterSearchBox: 'partials/filterSearchBox.html',
         editableCell: 'partials/editableCell.html',
         selectionCheckbox: 'partials/selectionCheckbox.html',
         selectAllCheckbox: 'partials/selectAllCheckbox.html',

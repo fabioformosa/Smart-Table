@@ -31,6 +31,8 @@ angular.module('smartTable.table', ['smartTable.column', 'smartTable.utilities',
 
         this.predicate = {};
         var lastColumnSort;
+        
+        scope.filterInput = [];
 
         function sortDataRow(array, column) {
             var sortAlgo = (scope.sortAlgorithm && angular.isFunction(scope.sortAlgorithm)) === true ? scope.sortAlgorithm : filter('orderBy');
