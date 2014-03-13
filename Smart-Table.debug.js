@@ -26,6 +26,8 @@ function ColumnProvider(DefaultColumnConfiguration, templateUrlList) {
         if (!(this instanceof Column)) {
             return new Column(config);
         }
+        var extendedFilter = angular.extend({}, this.filter, config.filter);
+        config.filter = extendedFilter;
         angular.extend(this, config);
     }
 
@@ -34,6 +36,8 @@ function ColumnProvider(DefaultColumnConfiguration, templateUrlList) {
     };
 
     DefaultColumnConfiguration.headerTemplateUrl = templateUrlList.defaultHeader;
+    DefaultColumnConfiguration.filter = new Object();
+    DefaultColumnConfiguration.filter.filterTemplateUrl = templateUrlList.defaultFilter;
     this.setDefaultOption(DefaultColumnConfiguration);
 
     this.$get = function () {
@@ -85,7 +89,14 @@ angular.module('smartTable.directives', ['smartTable.templateUrlList', 'smartTab
                 scope.$watch('columnCollection', function (oldValue, newValue) {
                     if (scope.columnCollection) {
                         for (var i = 0, l = scope.columnCollection.length; i < l; i++) {
-                            ctrl.insertColumn(scope.columnCollection[i]);
+                        	
+                        	//if filter label is not specified in columnCollection then set it with column label
+                        	var normalizedColumn = angular.extend({},scope.columnCollection[i]);
+                        	normalizedColumn.filter = angular.extend({},scope.columnCollection[i].filter);
+                        	 if((normalizedColumn.filter != undefined) && (normalizedColumn.filter.label == undefined))
+                        		 normalizedColumn.filter.label = normalizedColumn.label;
+                        	 
+                            ctrl.insertColumn(normalizedColumn);
                         }
                     } else {
                         //or guess data Structure
@@ -347,6 +358,12 @@ angular.module('smartTable.filters', []).
         return function (value, formatFunction, filterParameter) {
 
             var returnFunction;
+            
+            if(value == undefined){
+        		return function(value){
+        			return "";
+        		};
+        	}
 
             if (formatFunction && angular.isFunction(formatFunction)) {
                 returnFunction = formatFunction;
@@ -614,11 +631,17 @@ angular.module('smartTable.table', ['smartTable.column', 'smartTable.utilities',
     }]);
 
 
-angular.module('smartTable.templates', ['partials/defaultCell.html', 'partials/defaultHeader.html', 'partials/editableCell.html', 'partials/filterSearchBox.html', 'partials/globalSearchCell.html', 'partials/pagination.html', 'partials/selectAllCheckbox.html', 'partials/selectionCheckbox.html', 'partials/smartTable.html']);
+angular.module('smartTable.templates', ['partials/defaultCell.html', 'partials/defaultFilter.html', 'partials/defaultHeader.html', 'partials/editableCell.html', 'partials/filterSearchBox.html', 'partials/globalSearchCell.html', 'partials/pagination.html', 'partials/selectAllCheckbox.html', 'partials/selectionCheckbox.html', 'partials/smartTable.html']);
 
 angular.module("partials/defaultCell.html", []).run(["$templateCache", function($templateCache) {
   $templateCache.put("partials/defaultCell.html",
     "<span>{{row[column.map] | format:column.formatFunction:column.formatParameter}}</span>");
+}]);
+
+angular.module("partials/defaultFilter.html", []).run(["$templateCache", function($templateCache) {
+  $templateCache.put("partials/defaultFilter.html",
+    "<td>{{column.filter.label}}</td>\n" +
+    "<td><input ng-model=\"filterInput[column.map]\" type=\"text\"></td>");
 }]);
 
 angular.module("partials/defaultHeader.html", []).run(["$templateCache", function($templateCache) {
@@ -639,9 +662,9 @@ angular.module("partials/editableCell.html", []).run(["$templateCache", function
 
 angular.module("partials/filterSearchBox.html", []).run(["$templateCache", function($templateCache) {
   $templateCache.put("partials/filterSearchBox.html",
-    "<tr ng-repeat=\"column in columns | filter:isInFilterForm:true\">\n" +
-    "	<td>{{column.label}}</td>\n" +
-    "	<td><input ng-model=\"filterInput[column.map]\" type=\"text\"></td>\n" +
+    "<tr ng-repeat=\"column in columns | filter:{isInFilterForm:true}\" ng-include=\"column.filter.filterTemplateUrl\">\n" +
+    "<!-- 	<td>{{column.label}}</td> -->\n" +
+    "<!-- 	<td><input ng-model=\"filterInput[column.map]\" type=\"text\"></td> -->\n" +
     "</tr>\n" +
     "");
 }]);
@@ -750,6 +773,7 @@ angular.module('smartTable.templateUrlList', [])
         selectionCheckbox: 'partials/selectionCheckbox.html',
         selectAllCheckbox: 'partials/selectAllCheckbox.html',
         defaultHeader: 'partials/defaultHeader.html',
+        defaultFilter: 'partials/defaultFilter.html',
         pagination: 'partials/pagination.html'
     });
 

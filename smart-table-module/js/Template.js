@@ -1,8 +1,14 @@
-angular.module('smartTable.templates', ['partials/defaultCell.html', 'partials/defaultHeader.html', 'partials/editableCell.html', 'partials/filterSearchBox.html', 'partials/globalSearchCell.html', 'partials/pagination.html', 'partials/selectAllCheckbox.html', 'partials/selectionCheckbox.html', 'partials/smartTable.html']);
+angular.module('smartTable.templates', ['partials/defaultCell.html', 'partials/defaultFilter.html', 'partials/defaultHeader.html', 'partials/editableCell.html', 'partials/filterSearchBox.html', 'partials/globalSearchCell.html', 'partials/pagination.html', 'partials/selectAllCheckbox.html', 'partials/selectionCheckbox.html', 'partials/smartTable.html']);
 
 angular.module("partials/defaultCell.html", []).run(["$templateCache", function($templateCache) {
   $templateCache.put("partials/defaultCell.html",
     "<span>{{row[column.map] | format:column.formatFunction:column.formatParameter}}</span>");
+}]);
+
+angular.module("partials/defaultFilter.html", []).run(["$templateCache", function($templateCache) {
+  $templateCache.put("partials/defaultFilter.html",
+    "<td>{{column.filter.label}}</td>\n" +
+    "<td><input ng-model=\"filterInput[column.map]\" type=\"text\"></td>");
 }]);
 
 angular.module("partials/defaultHeader.html", []).run(["$templateCache", function($templateCache) {
@@ -23,9 +29,9 @@ angular.module("partials/editableCell.html", []).run(["$templateCache", function
 
 angular.module("partials/filterSearchBox.html", []).run(["$templateCache", function($templateCache) {
   $templateCache.put("partials/filterSearchBox.html",
-    "<tr ng-repeat=\"column in columns | filter:isInFilterForm:true\">\n" +
-    "	<td>{{column.label}}</td>\n" +
-    "	<td><input ng-model=\"filterInput[column.map]\" type=\"text\"></td>\n" +
+    "<tr ng-repeat=\"column in columns | filter:{isInFilterForm:true}\" ng-include=\"column.filter.filterTemplateUrl\">\n" +
+    "<!-- 	<td>{{column.label}}</td> -->\n" +
+    "<!-- 	<td><input ng-model=\"filterInput[column.map]\" type=\"text\"></td> -->\n" +
     "</tr>\n" +
     "");
 }]);

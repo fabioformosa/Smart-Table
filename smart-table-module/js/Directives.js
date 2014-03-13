@@ -38,7 +38,14 @@ angular.module('smartTable.directives', ['smartTable.templateUrlList', 'smartTab
                 scope.$watch('columnCollection', function (oldValue, newValue) {
                     if (scope.columnCollection) {
                         for (var i = 0, l = scope.columnCollection.length; i < l; i++) {
-                            ctrl.insertColumn(scope.columnCollection[i]);
+                        	
+                        	//if filter label is not specified in columnCollection then set it with column label
+                        	var normalizedColumn = angular.extend({},scope.columnCollection[i]);
+                        	normalizedColumn.filter = angular.extend({},scope.columnCollection[i].filter);
+                        	 if((normalizedColumn.filter != undefined) && (normalizedColumn.filter.label == undefined))
+                        		 normalizedColumn.filter.label = normalizedColumn.label;
+                        	 
+                            ctrl.insertColumn(normalizedColumn);
                         }
                     } else {
                         //or guess data Structure

@@ -1,0 +1,4 @@
+<tr ng-repeat="column in columns | filter:{isInFilterForm:true}" ng-include="column.filter.filterTemplateUrl">
+<!-- 	<td>{{column.label}}</td> -->
+<!-- 	<td><input ng-model="filterInput[column.map]" type="text"></td> -->
+</tr>

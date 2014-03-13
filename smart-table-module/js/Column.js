@@ -26,6 +26,8 @@ function ColumnProvider(DefaultColumnConfiguration, templateUrlList) {
         if (!(this instanceof Column)) {
             return new Column(config);
         }
+        var extendedFilter = angular.extend({}, this.filter, config.filter);
+        config.filter = extendedFilter;
         angular.extend(this, config);
     }
 
@@ -34,6 +36,8 @@ function ColumnProvider(DefaultColumnConfiguration, templateUrlList) {
     };
 
     DefaultColumnConfiguration.headerTemplateUrl = templateUrlList.defaultHeader;
+    DefaultColumnConfiguration.filter = new Object();
+    DefaultColumnConfiguration.filter.filterTemplateUrl = templateUrlList.defaultFilter;
     this.setDefaultOption(DefaultColumnConfiguration);
 
     this.$get = function () {

@@ -7,5 +7,6 @@ angular.module('smartTable.templateUrlList', [])
         selectionCheckbox: 'partials/selectionCheckbox.html',
         selectAllCheckbox: 'partials/selectAllCheckbox.html',
         defaultHeader: 'partials/defaultHeader.html',
+        defaultFilter: 'partials/defaultFilter.html',
         pagination: 'partials/pagination.html'
     });

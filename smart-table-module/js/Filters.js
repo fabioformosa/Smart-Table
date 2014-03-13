@@ -6,6 +6,12 @@ angular.module('smartTable.filters', []).
         return function (value, formatFunction, filterParameter) {
 
             var returnFunction;
+            
+            if(value == undefined){
+        		return function(value){
+        			return "";
+        		};
+        	}
 
             if (formatFunction && angular.isFunction(formatFunction)) {
                 returnFunction = formatFunction;
