@@ -662,7 +662,7 @@ angular.module("partials/editableCell.html", []).run(["$templateCache", function
 
 angular.module("partials/filterSearchBox.html", []).run(["$templateCache", function($templateCache) {
   $templateCache.put("partials/filterSearchBox.html",
-    "<tr ng-repeat=\"column in columns | filter:{isInFilterForm:true}\" ng-include=\"column.filter.filterTemplateUrl\">\n" +
+    "<tr ng-repeat=\"column in columns | filter:{filter.active:true}\" ng-include=\"column.filter.filterTemplateUrl\">\n" +
     "<!-- 	<td>{{column.label}}</td> -->\n" +
     "<!-- 	<td><input ng-model=\"filterInput[column.map]\" type=\"text\"></td> -->\n" +
     "</tr>\n" +
