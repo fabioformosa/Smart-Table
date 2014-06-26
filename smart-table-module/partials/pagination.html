@@ -2,7 +2,7 @@
     <ul>
          <li ng-repeat="page in pages" ng-class="{active: page.active, disabled: page.disabled}">
     		<a ng-click="selectPage(page.number)">
-    			<div ng-bind-html-unsafe="page.text"></div>
+    			<div ng-bind-html="page.text"></div>
     		</a>
     	</li>
     </ul>

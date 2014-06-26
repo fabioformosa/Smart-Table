@@ -35,7 +35,7 @@ angular.module('ui.bootstrap.pagination', ['smartTable.templateUrlList'])
                 function makePage(number, text, isActive, isDisabled) {
                     return {
                         number: number,
-                        text: text,
+                        text: text + "",
                         active: isActive,
                         disabled: isDisabled
                     };
