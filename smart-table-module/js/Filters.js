@@ -8,9 +8,7 @@ angular.module('smartTable.filters', []).
             var returnFunction;
             
             if(value == undefined){
-        		return function(value){
         			return "";
-        		};
         	}
 
             if (formatFunction && angular.isFunction(formatFunction)) {
