@@ -415,10 +415,10 @@ angular.module('smartTable.table', ['smartTable.column', 'smartTable.utilities',
                     column.sortPredicate = column.sortPredicate || column.map;
                     column.reverse = column.reverse !== true;
                     lastColumnSort = column;
+
+                    this.pipe();
                 }
             }
-
-            this.pipe();
         };
 
         /**
